@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Topu düşürme</title>
+    <link rel="icon" href="icon2.avif" type="image/x-icon">
+    <style>
+        /* Sayfa stilini ayarla */
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #858ab3;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Canvas'ı stilini ayarla */
+        #canvas {
+            border: 2px solid black;
+            background-color: #fff;
+            background-image: url('backimg.jpg');
+        }
+
+        /* Skor div'inin stilini ayarla */
+        #score {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 20px;
+            color: #fff;
+            background-color: #6b0b77;
+            padding: 10px 20px;
+            border-radius: 5px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Butonların stilini ayarla */
+        .button-container {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px; /* Aralarda hafif bir boşluk bırak */
+        }
+
+        .button {
+            font-size: 20px;
+            color: #fff;
+            background-color: #6b0b77;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s ease;
+        }
+
+        .button:hover {
+            background-color: #be7ec5;
+        }
+
+        /* Buton ikonlarının stilini ayarla */
+        .button i {
+            margin-right: 5px;
+        }
+
+        /* Görünmez buton stilini ayarla */
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Canvas elementi -->
+    <div id="score">Skor: 0</div>
+    <canvas id="canvas" width="1100" height="500"></canvas>
+
+    <!-- Yeniden başlat ve duraklat/sürdür butonları -->
+    <div class="button-container">
+        <div id="restart-btn" class="button"><i class="fa fa-refresh"></i>Yeniden Başlat</div>
+        <div id="pause-btn" class="button"><i class="fa fa-pause"></i>Oyunu Durdur</div>
+        <div id="resume-btn" class="button hidden"><i class="fa fa-play"></i>Oyunu Sürdür</div>
+    </div>
+    <audio id="background-music" loop>
+        <source src="gamemusic.mp3" type="audio/mpeg">
+    </audio>
+
+<script>
+        // Canvas'a erisim ve cizim baglamini alinmasi
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Toplarin dizisi
+        let balls = [];
+        let ballRadius = 10; // Toplarin yaricapi
+
+        // Platformun boyutlari ve baslangic koordinatlari
+        let paddleHeight = 15;
+        let paddleWidth = 100;
+        let paddleX = (canvas.width - paddleWidth) / 2;
+        let paddleSpeed = 15; // Platformun hareket hizi (daha yavas)
+
+        // Platformun hareketi icin tuslarin durumu
+        let rightPressed = false;
+        let leftPressed = false;
+
+        // Skor
+        let score = 0;
+
+        // Yeni top olusturma bayragi ve bekleme suresi
+        let canCreateBall = true;
+        const ballCreationDelay = 8500; // Millisaniye cinsinden
+        let gameEnded = false;
+        let gameRunning = false; // Oyunun çalışıp çalışmadığını izlemek için bir değişken
+
+        // Müzik durumu
+        let musicPlaying = false;
+
+        // Top olusturma fonksiyonu
+        function createBall() {
+            let ball = {
+                x: Math.random() * (canvas.width - 2 * ballRadius) + ballRadius,
+                y: canvas.height - 30,
+                dx: 2, //  x yonlu hiz 
+                dy: -2.5, // Y eksenindeki hiz
+                color: "#" + ((1 << 24) * Math.random() | 0).toString(16), // Rastgele renk olusturma
+            };
+            if (!musicPlaying) {
+                document.getElementById('background-music').play();
+                musicPlaying = true;
+            }
+            balls.push(ball);
+        }
+
+        // Topu ciz
+        function drawBall(ball) {
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ballRadius, 0, Math.PI*2);
+            ctx.fillStyle = ball.color;
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        // Platformu ciz
+        function drawPaddle() {
+            ctx.beginPath();
+            ctx.rect(paddleX, canvas.height - paddleHeight, paddleWidth, paddleHeight);
+            ctx.fillStyle = "red";
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        // Oyun alanini temizle ve her seyi ciz
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            balls.forEach(drawBall);
+            drawPaddle();
+
+            let anyBallOnGround = false; // Herhangi bir topun yere carptigini kontrol etmek icin bayrak
+
+            // Toplarin hareketi ve sinirlarla carpismasi
+            balls.forEach(function(ball, index) {
+                if(ball.x + ball.dx > canvas.width - ballRadius || ball.x + ball.dx < ballRadius) {
+                    ball.dx = -ball.dx;
+                }
+                // Toplarin yukari veya asagi yonde hareketi ve carpismasi
+                if(ball.y + ball.dy < ballRadius) {
+                    ball.dy = -ball.dy;
+                } else if(ball.y + ball.dy > canvas.height - ballRadius) {
+                    // Top platforma carptiginda ters yonde hareket ettir
+                    if(ball.x > paddleX && ball.x < paddleX + paddleWidth) {
+                        ball.dy = -ball.dy;
+                        score += 10; // Skoru artir
+                        document.getElementById("score").innerHTML = "Skor: " + score; // Skoru ekranda guncelle
+                        if (canCreateBall) {
+                            canCreateBall = false;
+                            setTimeout(() => {
+                                createBall(); // Yeni bir top olustur
+                                canCreateBall = true; // Bayragi tekrar true yap
+                            }, ballCreationDelay);
+                        }
+                    } else {
+                        // Top zemine carptiysa oyunu bitir
+                        balls.splice(index, 1); // Carpan topu listeden kaldir
+                        anyBallOnGround = true; // Herhangi bir top yere carpti
+                    }
+                }
+
+                // Toplarin hareketi
+                ball.x += ball.dx;
+                ball.y += ball.dy;
+            });
+
+            // Platformun hareketi
+            if(rightPressed && paddleX < canvas.width - paddleWidth) {
+                paddleX += paddleSpeed; 
+            } else if(leftPressed && paddleX > 0) {
+                paddleX -= paddleSpeed; 
+            }
+            
+            // Oyunun bitme durumu
+            if(anyBallOnGround && !gameEnded) {
+                clearInterval(interval);
+                document.getElementById('background-music').pause();
+                alert("Oyun Bitti. Skorunuz: " + score);
+                gameEnded = true;
+            }
+        }
+
+        // Klavye tuslarinin basilip birakilmasini takip et
+        function keyDownHandler(e) {
+            if(e.key === "Right" || e.key === "ArrowRight") {
+                rightPressed = true;
+            }
+            else if(e.key === "Left" || e.key === "ArrowLeft") {
+                leftPressed = true;
+            }
+        }
+
+        function keyUpHandler(e) {
+            if(e.key === "Right" || e.key === "ArrowRight") {
+                rightPressed = false;
+            }
+            else if(e.key === "Left" || e.key === "ArrowLeft") {
+                leftPressed = false;
+            }
+        }
+
+        // Klavye olaylarini dinle
+        document.addEventListener("keydown", keyDownHandler, false);
+        document.addEventListener("keyup", keyUpHandler, false);
+
+        // Yeniden başlat butonuna tıklama olayını dinle
+        document.getElementById("restart-btn").addEventListener("click", function() {
+            clearInterval(interval); // Eski oyun döngüsünü temizle
+            balls = []; // Topları sıfırla
+            score = 0; // Skoru sıfırla
+            document.getElementById("score").innerHTML = "Skor: " + score; // Skoru sıfırla
+            createBall(); // Yeni bir top oluştur
+            interval = setInterval(draw, 10); // Yeni oyun döngüsünü başlat
+            gameEnded = false; // Oyunun bittiğini sıfırla
+            gameRunning = true; // Oyunun çalıştığını işaretle
+            musicPlaying = false; // Müziği sıfırla
+            document.getElementById("pause-btn").style.display = "block"; // Duraklat butonunu göster
+            document.getElementById("resume-btn").style.display = "none"; // Sürdür butonunu gizle
+            document.getElementById('background-music').currentTime = 0; // Müziği başa sardır
+            document.getElementById('background-music').play();
+        });
+
+        // Duraklat butonuna tıklama olayını dinle
+        document.getElementById("pause-btn").addEventListener("click", function() {
+            clearInterval(interval); // Oyun döngüsünü duraklat
+            gameRunning = false; // Oyunun durakladığını işaretle
+            document.getElementById("pause-btn").style.display = "none"; // Duraklat butonunu gizle
+            document.getElementById("resume-btn").style.display = "block"; // Sürdür butonunu göster
+            document.getElementById('background-music').pause();
+        });
+
+        // Sürdür butonuna tıklama olayını dinle
+        document.getElementById("resume-btn").addEventListener("click", function() {
+            interval = setInterval(draw, 10); // Oyun döngüsünü sürdür
+            gameRunning = true; // Oyunun çalıştığını işaretle
+            document.getElementById("pause-btn").style.display = "block"; // Duraklat butonunu göster
+            document.getElementById("resume-btn").style.display = "none"; // Sürdür butonunu gizle
+            document.getElementById('background-music').currentTime = 0; // Müziği başa sardır
+            document.getElementById('background-music').play();
+        });
+
+        // Yeni bir top olustur ve oyun dongusunu baslat
+        createBall();
+        var interval = setInterval(draw, 10);
+    </script>
+</body>
+</html>
