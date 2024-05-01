@@ -9,6 +9,9 @@ Platformu Kontrol Et: Oyunu oynamak için klavye ok tuşlarını kullanarak plat
 Topları Yakala: Düşen topları platformla yakalayarak skorunuzu artırın. Her yakalanan top size puan kazandırır.
 Dikkatli Olun: Toplar platformu kaçırırsa oyun biter ve skorunuz hesaplanır.
 
+Oyunun hakkında bilgi almak ve nasıl oynandığını görmek için youtube linkinden videomu izleyerek inceleyebilirsiniz:
+https://www.youtube.com/watch?v=7titGGaZ1zk
+
 ![oyun ekran görüntüsü 2](https://github.com/erdembaltaci/Topu-Havada-Tutma-Oyunu/assets/103959698/43eaba64-ba72-49da-86e4-71324dbdead2)
 
 
