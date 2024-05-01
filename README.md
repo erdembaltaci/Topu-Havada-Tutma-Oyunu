@@ -1,4 +1,4 @@
-Topu Havada Tutma Oyunu
+Topu Havada Tutma Oyunu:  
 Bu proje web tabanlı programlama dersi proje ödevi kapsamında, HTML5 Canvas ve JavaScript kullanılarak geliştirilmiş basit bir tarayıcı tabanlı oyunudur. Oyunun amacı, platformu kontrol ederek düşen topları yakalamak ve yüksek bir skor elde etmektir.
 
 
